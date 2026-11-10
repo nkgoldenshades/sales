@@ -52,7 +52,68 @@
   
   <!-- Use system fonts to avoid Google Fonts timeout -->
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    
+    /* ⚡ INSTANT LOADING SCREEN - Shows immediately while Flutter loads */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+    
+    #loading-screen.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .loading-logo {
+      width: 120px;
+      height: 120px;
+      background: white;
+      border-radius: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 48px;
+      font-weight: bold;
+      color: #667eea;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      margin-bottom: 30px;
+    }
+    
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    .loading-text {
+      color: white;
+      font-size: 18px;
+      margin-top: 20px;
+      font-weight: 500;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 
   <!-- 🔒 DISABLE DEVELOPER CONSOLE IN PRODUCTION -->
@@ -95,8 +156,8 @@
     })();
   </script>
 
-  <!-- Razorpay Checkout.js for web payments -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Razorpay Checkout.js for web payments (async to not block loading) -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
   
   <!-- Razorpay Flutter Bridge -->
   <script>
@@ -114,7 +175,7 @@
               email: options.prefill_email || '',
               contact: options.prefill_contact || '',
             },
-            theme: { color: options.theme_color || '#1976D2' },
+            theme: { color: options.theme_color || '#667eea' },
             modal: {
               ondismiss: function() {
                 resolve(JSON.stringify({ error: 'Payment cancelled by user' }));
@@ -129,72 +190,6 @@
             }
           };
 
-          if (options.order_id && options.order_id !== '') {
-            rzpOptions.order_id = options.order_id;
-          }
-
-          var rzp = new Razorpay(rzpOptions);
-          rzp.on('payment.failed', function(response) {
-            resolve(JSON.stringify({
-              error: response.error.description || 'Payment failed',
-              code: response.error.code || '',
-            }));
-          });
-          rzp.open();
-        } catch(e) {
-          resolve(JSON.stringify({ error: e.toString() }));
-        }
-      });
-    };
-  </script>
-
-  <!-- Web Speech API polyfill hint for browsers -->
-  <script>
-    // Enable microphone access for Web Speech API
-    window.addEventListener('load', function() {
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        console.log('✅ Web Speech API available');
-      } else {
-        console.log('⚠️ Web Speech API not available in this browser');
-      }
-    });
-  </script>
-  
-  <!-- Razorpay Checkout.js for web payments -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  
-  <!-- Razorpay Flutter Bridge -->
-  <script>
-    window.openRazorpay = function(options) {
-      return new Promise(function(resolve, reject) {
-        try {
-          var rzpOptions = {
-            key: options.key,
-            amount: options.amount,
-            currency: options.currency || 'INR',
-            name: options.name || 'VaultSales',
-            description: options.description || '',
-            prefill: {
-              name: options.prefill_name || '',
-              email: options.prefill_email || '',
-              contact: options.prefill_contact || '',
-            },
-            theme: { color: options.theme_color || '#1976D2' },
-            modal: {
-              ondismiss: function() {
-                resolve(JSON.stringify({ error: 'Payment cancelled by user' }));
-              }
-            },
-            handler: function(response) {
-              resolve(JSON.stringify({
-                payment_id: response.razorpay_payment_id,
-                order_id: response.razorpay_order_id || '',
-                signature: response.razorpay_signature || '',
-              }));
-            }
-          };
-
-          // Only set order_id if provided and non-empty
           if (options.order_id && options.order_id !== '') {
             rzpOptions.order_id = options.order_id;
           }
@@ -227,6 +222,27 @@
   </script>
 </head>
 <body>
+  <!-- ⚡ INSTANT LOADING SCREEN - Shows immediately (< 0.1s) -->
+  <div id="loading-screen">
+    <div class="loading-logo">VS</div>
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading VaultSales...</div>
+  </div>
+
+  <!-- Flutter will load here -->
   <script src="flutter_bootstrap.js" async></script>
+  
+  <!-- Hide loading screen when Flutter is ready -->
+  <script>
+    window.addEventListener('flutter-first-frame', function() {
+      var loadingScreen = document.getElementById('loading-screen');
+      if (loadingScreen) {
+        loadingScreen.classList.add('fade-out');
+        setTimeout(function() {
+          loadingScreen.style.display = 'none';
+        }, 500);
+      }
+    });
+  </script>
 </body>
 </html>
